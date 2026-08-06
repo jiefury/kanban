@@ -1,0 +1,146 @@
+<!--
+source: jiefury/kanban
+template-version: 1.0.0
+target-path: .github/ISSUE_TEMPLATE/codex-task.yml
+-->
+name: Codex Task
+description: 记录一个可交付、可验证的 Codex 研发任务
+title: "[Codex] "
+labels:
+  - codex-task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请按一个实际交付目标创建一条 Issue。多轮 Codex 对话仍属于同一任务。
+
+  - type: input
+    id: repository
+    attributes:
+      label: 业务仓库
+      description: 当前 Issue 所在仓库名称。
+      placeholder: owner/repository
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: 任务类型
+      options:
+        - 开发
+        - Bug 修复
+        - 重构
+        - 调研
+        - 文档
+        - 运维
+    validations:
+      required: true
+
+  - type: input
+    id: area
+    attributes:
+      label: 业务域或模块
+      placeholder: 例如 device-command、登录、部署
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+      default: 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标
+      description: 说明要改变什么，以及不在范围内的内容。
+      placeholder: 清晰描述最终交付结果。
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 用可检查的条目描述完成条件。
+      placeholder: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  - type: dropdown
+    id: codex_mode
+    attributes:
+      label: Codex 参与方式
+      options:
+        - 未使用
+        - 辅助
+        - 主导
+        - 自动化
+      default: 1
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: codex_surface
+    attributes:
+      label: Codex 使用入口
+      options:
+        - label: App
+        - label: CLI
+        - label: IDE
+        - label: Cloud
+        - label: API
+
+  - type: dropdown
+    id: human_time
+    attributes:
+      label: 人工投入
+      options:
+        - <15m
+        - 15–60m
+        - 1–4h
+        - >4h
+      default: 1
+
+  - type: markdown
+    attributes:
+      value: |
+        完成任务后，请在 Issue 中补充结果字段和复盘，不要在此处粘贴完整 Codex 对话。
+
+  - type: textarea
+    id: outcome_review
+    attributes:
+      label: 完成后复盘
+      description: 任务结束时填写，引用 PR、CI/测试和人工验收证据。
+      value: |
+        ## 结果
+        - Outcome Score（1–5）：
+        - Verification：未验证 / 局部通过 / 完整通过 / 被阻塞
+        - Review Changes：无 / 少量 / 多次 / 大幅返工
+        - Regression：无 / 有
+        - Rework Count：
+
+        ## 证据
+        - PR：
+        - CI / 测试：
+        - 人工验收：
+
+        ## Codex 贡献
+        - 最有价值的帮助：
+        - 需要人工纠正的地方：
+
+        ## 沉淀
+        - Reusable Output：无 / 规则 / Skill / 脚本 / 测试 / 文档
+        - 更新的资产：
+      render: markdown
