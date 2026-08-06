@@ -1,0 +1,19 @@
+version: 1
+source:
+  repository: jiefury/kanban
+  template: templates/codex-task.yml
+  version: 1.0.0
+
+repositories:
+  # 初始只登记已经确认需要使用统一 Codex 任务模板的业务仓库。
+  # enabled=false 时不会创建任何跨仓库 PR。
+  - name: jiefury/intelligent-platform-server
+    enabled: false
+    default_branch: dev
+    target_path: .github/ISSUE_TEMPLATE/codex-task.yml
+    note: 待确认 GitHub 镜像仓库和 GitHub App 安装后启用
+  - name: jiefury/intelligent-platform-ui-management
+    enabled: false
+    default_branch: dev
+    target_path: .github/ISSUE_TEMPLATE/codex-task.yml
+    note: 待确认 GitHub 镜像仓库和 GitHub App 安装后启用
