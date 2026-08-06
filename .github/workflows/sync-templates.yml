@@ -1,0 +1,77 @@
+name: Sync Codex task template
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - templates/codex-task.yml
+      - config/repositories.json
+      - .github/workflows/sync-templates.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate source and registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON registry
+        run: node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('config/repositories.json','utf8')); if(!Array.isArray(x.repositories)) throw new Error('repositories must be an array'); for(const r of x.repositories){if(!r.name||!r.target_path) throw new Error('repository entry missing name or target_path');}"
+      - name: Validate YAML source shape
+        run: node -e "const fs=require('fs'); const x=fs.readFileSync('templates/codex-task.yml','utf8'); for(const s of ['name: Codex Task','body:','id: repository','id: acceptance','id: outcome_review']) if(!x.includes(s)) throw new Error('template missing '+s);"
+
+  sync:
+    name: Create target sync PRs
+    needs: validate
+    if: ${{ vars.CODEX_TEMPLATE_SYNC_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CODEX_SYNC_APP_ID }}
+          private-key: ${{ secrets.CODEX_SYNC_APP_PRIVATE_KEY }}
+          owner: jiefury
+      - name: Sync enabled repositories
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const cp = require('child_process');
+          const registry = JSON.parse(fs.readFileSync('config/repositories.json', 'utf8'));
+          const template = fs.readFileSync(registry.source.template, 'utf8');
+          for (const repo of registry.repositories.filter(x => x.enabled)) {
+            const branch = 'codex/sync-codex-task-template';
+            const marker = `<!-- source: ${registry.source.repository} -->`;
+            const body = `${marker}\n${template}`;
+            const payload = Buffer.from(body).toString('base64');
+            const path = repo.target_path;
+            const ref = cp.execFileSync('gh', ['api', `repos/${repo.name}/git/ref/heads/${repo.default_branch}`], {encoding:'utf8'});
+            const baseSha = JSON.parse(ref).object.sha;
+            let branchSha = baseSha;
+            try {
+              const current = cp.execFileSync('gh', ['api', `repos/${repo.name}/git/ref/heads/${branch}`], {encoding:'utf8'});
+              branchSha = JSON.parse(current).object.sha;
+            } catch {
+              cp.execFileSync('gh', ['api', `repos/${repo.name}/git/refs`, '--method', 'POST', '-f', `ref=refs/heads/${branch}`, '-f', `sha=${baseSha}`]);
+            }
+            let fileSha = '';
+            try {
+              const currentFile = cp.execFileSync('gh', ['api', `repos/${repo.name}/contents/${path}?ref=${branch}`], {encoding:'utf8'});
+              fileSha = JSON.parse(currentFile).sha;
+            } catch {}
+            const args = ['api', `repos/${repo.name}/contents/${path}`, '--method', 'PUT', '-f', `message=chore: sync Codex task issue template`, '-f', `content=${payload}`, '-f', `branch=${branch}`];
+            if (fileSha) args.push('-f', `sha=${fileSha}`);
+            cp.execFileSync('gh', args, {stdio:'inherit'});
+            const prBody = `Automated template sync from ${registry.source.repository}.\n\nSource version: ${registry.source.version}\n\nThis PR was created by the GitHub App sync workflow.`;
+            cp.execFileSync('gh', ['pr', 'create', '--repo', repo.name, '--head', branch, '--base', repo.default_branch, '--draft', '--title', '[codex] sync task issue template', '--body', prBody], {stdio:'inherit'});
+          }
+          NODE
